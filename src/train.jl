@@ -4,7 +4,7 @@ using Base.Iterators: partition
 using Random
 using Statistics
 
-include("util.jl")
+include("utils.jl")
 include("generator.jl")
 include("discriminator.jl")
 
@@ -19,8 +19,8 @@ NUM_EXAMPLES = 2 # Temporary for experimentation
 VERBOSE_FREQUENCY = 2 # Verbose output after every 2 epochs
 
 # Data Loading
-dataA = load_dataset("../data/trainA/",256)[:,:,:,1:NUM_EXAMPLES] |> gpu
-dataB = load_dataset("../data/trainB/",256)[:,:,:,1:NUM_EXAMPLES] |> gpu
+dataA = load_dataset("../data/trainA/",256)[:,:,:,1:NUM_EXAMPLES] # |> gpu
+dataB = load_dataset("../data/trainB/",256)[:,:,:,1:NUM_EXAMPLES] # |> gpu
 mb_idxs = partition(shuffle!(collect(1:size(dataA)[end])), BATCH_SIZE)
 train_A = [make_minibatch(dataA, i) for i in mb_idxs]
 train_B = [make_minibatch(dataB, i) for i in mb_idxs]
@@ -32,10 +32,10 @@ opt_disc_A = ADAM(dis_lr,(0.5,0.999))
 opt_disc_B = ADAM(dis_lr,(0.5,0.999))
 
 # Define models
-gen_A = UNet() |> gpu # Generator For A->B
-gen_B = UNet() |> gpu # Generator For B->A
-dis_A = Discriminator() |> gpu # Discriminator For Domain A
-dis_B = Discriminator() |> gpu # Discriminator For Domain B
+gen_A = UNet() # |> gpu # Generator For A->B
+gen_B = UNet() # |> gpu # Generator For B->A
+dis_A = Discriminator() # |> gpu # Discriminator For Domain A
+dis_B = Discriminator() # |> gpu # Discriminator For Domain B
 println("Loaded Models")
 
 
@@ -112,7 +112,7 @@ println("Training...")
 for epoch in 1:NUM_EPOCHS
     println("-----------Epoch : $epoch-----------")
     for i in 1:length(train_A)
-        g_loss,dA_loss,dB_loss = train_step(train_A[i] |> gpu,train_B[i] |> gpu)
+        g_loss,dA_loss,dB_loss = train_step(train_A[i],train_B[i])
         if epoch % VERBOSE_FREQUENCY == 0
             println("Gen Loss : $g_loss")
             println("DisA Loss : $dA_loss")
