@@ -1,2 +1,3 @@
-# CycleGAN.jl
+# CycleGAN.jl [WIP]
+
 CycleGAN implementation in pure Julia.
