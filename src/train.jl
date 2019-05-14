@@ -19,8 +19,8 @@ NUM_EXAMPLES = 2 # Temporary for experimentation
 VERBOSE_FREQUENCY = 2 # Verbose output after every 2 epochs
 
 # Data Loading
-dataA = load_dataset("../data/trainA/",256)[:,:,:,1:NUM_EXAMPLES] # |> gpu
-dataB = load_dataset("../data/trainB/",256)[:,:,:,1:NUM_EXAMPLES] # |> gpu
+dataA = load_dataset("../data/trainA/",256)[:,:,:,1:NUM_EXAMPLES] |> gpu
+dataB = load_dataset("../data/trainB/",256)[:,:,:,1:NUM_EXAMPLES] |> gpu
 mb_idxs = partition(shuffle!(collect(1:size(dataA)[end])), BATCH_SIZE)
 train_A = [make_minibatch(dataA, i) for i in mb_idxs]
 train_B = [make_minibatch(dataB, i) for i in mb_idxs]
@@ -32,10 +32,10 @@ opt_disc_A = ADAM(dis_lr,(0.5,0.999))
 opt_disc_B = ADAM(dis_lr,(0.5,0.999))
 
 # Define models
-gen_A = UNet() # |> gpu # Generator For A->B
-gen_B = UNet() # |> gpu # Generator For B->A
-dis_A = Discriminator() # |> gpu # Discriminator For Domain A
-dis_B = Discriminator() # |> gpu # Discriminator For Domain B
+gen_A = UNet() |> gpu # Generator For A->B
+gen_B = UNet() |> gpu # Generator For B->A
+dis_A = Discriminator() |> gpu # Discriminator For Domain A
+dis_B = Discriminator() |> gpu # Discriminator For Domain B
 println("Loaded Models")
 
 
@@ -46,8 +46,8 @@ function train_step(X_A,X_B)
     fake_labels = ones(0,BATCH_SIZE)
     
     ### Forward Propagation ###
-    zero_grad!(gen_A)
-    zero_grad!(gen_B)
+    # zero_grad!(gen_A)
+    # zero_grad!(gen_B)
     
     println("1")
     fake_B = gen_A(X_A) # Fake image generated in domain B
@@ -84,7 +84,7 @@ function train_step(X_A,X_B)
     
     ### Discriminator Losses ###
     # For domain A #
-    zero_grad!(dis_A)
+    # zero_grad!(dis_A)
     fake_A_prob = drop_first_two(dis_A(fake_A.data))
     dis_A_real_loss = mean((real_A_prob .- real_labels).^2)
     dis_A_fake_loss = mean((fake_A_prob .- fake_labels).^2)
@@ -95,7 +95,7 @@ function train_step(X_A,X_B)
     println("Optimised disA")
     
     # For domain B #
-    zero_grad!(dis_B)
+    # zero_grad!(dis_B)
     fake_B_prob = drop_first_two(dis_B(fake_B.data))
     dis_B_real_loss = mean((real_B_prob .- real_labels).^2)
     dis_B_fake_loss = mean((fake_B_prob .- fake_labels).^2)
