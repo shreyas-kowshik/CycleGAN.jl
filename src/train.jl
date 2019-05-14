@@ -112,7 +112,7 @@ println("Training...")
 for epoch in 1:NUM_EPOCHS
     println("-----------Epoch : $epoch-----------")
     for i in 1:length(train_A)
-        g_loss,dA_loss,dB_loss = train_step(train_A[i],train_B[i])
+        g_loss,dA_loss,dB_loss = train_step(train_A[i] |> gpu,train_B[i] |> gpu)
         if epoch % VERBOSE_FREQUENCY == 0
             println("Gen Loss : $g_loss")
             println("DisA Loss : $dA_loss")
