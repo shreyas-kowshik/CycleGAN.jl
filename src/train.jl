@@ -15,6 +15,7 @@ dis_lr = 0.0001f0
 gen_lr = 0.0001f0
 λ₁ = 10.0 # Cycle loss weight for dommain A
 λ₂ = 10.0 # Cycle loss weight for domain B
+λid = 1.0 # Identity loss weight - Set this to '0' if identity loss is not required
 NUM_EXAMPLES = 2 # Temporary for experimentation
 VERBOSE_FREQUENCY = 2 # Verbose output after every 2 epochs
 
@@ -73,8 +74,14 @@ function train_step(X_A,X_B)
     println("5")
     gen_A_loss = mean((fake_A_prob .- real_labels).^2)
     rec_A_loss = mean(abs.(X_A .- rec_A)) # Reconstrucion loss for domain A
-    
-    gen_loss = gen_A_loss + gen_B_loss + λ₁*rec_A_loss + λ₂*rec_B_loss # Total generator loss
+
+    # Identity losses 
+    # gen_A should be identity if X_B is fed : ||gen_A(X_B) - X_B||
+    idt_A_loss = mean(abs.(gen_A(X_B) .- X_B))
+    # gen_B should be identity if X_A is fed : ||gen_B(X_A) - X_A||
+    idt_B_loss = mean(abs.(gen_B(X_A) .- X_A))
+
+    gen_loss = gen_A_loss + gen_B_loss + λ₁*rec_A_loss + λ₂*rec_B_loss  + λid*(λ₁*idt_A_loss + λ₂*idt_B_loss) # Total generator loss
     
     println("Forward propagate generators")
     # Optimise
