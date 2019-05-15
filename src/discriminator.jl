@@ -9,12 +9,12 @@ end
 
 function Discriminator()
     model = Chain(Conv((4,4), 3=>8,pad = (1, 1), stride=(2,2)),x->leakyrelu.(x),
-                  ConvBlock(8,16)...,
-                  ConvBlock(16,32)...,
-                  ConvBlock(32,64)...,
-                  ConvBlock(64,32)...,
-                  ConvBlock(32,16)...,
-                  ConvBlock(16,8)...,
+                  ConvBlock(8,16),
+                  ConvBlock(16,32),
+                  ConvBlock(32,64),
+                  ConvBlock(64,32),
+                  ConvBlock(32,16),
+                  ConvBlock(16,8),
                   Conv((4,4), 8=>1,pad = (1, 1), stride=(2,2)))
     return model 
     # model = Chain(model...,ConvBlock(8,16)...)
