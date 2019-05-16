@@ -42,6 +42,10 @@ println("Loaded Models")
 
 # Forward prop, backprop, optimise!
 function train_step(X_A,X_B) 
+    # Normalise the Images
+    X_A = norm(X_A)
+    X_B = norm(X_B)
+
     # LABELS #
     real_labels = ones(1,BATCH_SIZE)
     fake_labels = ones(0,BATCH_SIZE)
@@ -115,15 +119,45 @@ function train_step(X_A,X_B)
     return gen_loss,dis_A_loss,dis_B_loss
 end
 
-println("Training...")
-for epoch in 1:NUM_EPOCHS
-    println("-----------Epoch : $epoch-----------")
-    for i in 1:length(train_A)
-        g_loss,dA_loss,dB_loss = train_step(train_A[i] |> gpu,train_B[i] |> gpu)
-        if epoch % VERBOSE_FREQUENCY == 0
-            println("Gen Loss : $g_loss")
-            println("DisA Loss : $dA_loss")
-            println("DisB Loss : $dB_loss")
+function train()
+    println("Training...")
+    for epoch in 1:NUM_EPOCHS
+        println("-----------Epoch : $epoch-----------")
+        for i in 1:length(train_A)
+            g_loss,dA_loss,dB_loss = train_step(train_A[i] |> gpu,train_B[i] |> gpu)
+            if epoch % VERBOSE_FREQUENCY == 0
+                println("Gen Loss : $g_loss")
+                println("DisA Loss : $dA_loss")
+                println("DisB Loss : $dB_loss")
+            end
         end
     end
+end
+
+### SAMPLING ###
+function sampleA2B(X_A_test)
+    """
+    Samples new images in domain B
+    X_A_test : N x C x H x W array - Test images in domain A
+    """
+    testmode!(gen_A)
+    X_A_test = norm(X_A_test)
+    X_B_generated = cpu(denorm(gen_A(X_A_test |> gpu)).data)
+    testmode!(gen_A,false)
+    imgs = []
+    s = size(X_B_generated)
+    for i in size(X_B_generated)[end]
+       push!(imgs,colorview(RGB,reshape(X_B_generated[:,:,:,i],3,s[1],s[2])))
+    end
+    imgs
+end
+
+function test()
+   # load test data
+   dataA = load_dataset("../data/trainA/",256)[:,:,:,1:2] |> gpu
+   out = sampleA2B(dataA)
+   println(length(out))
+   for (i,img) in enumerate(out)
+        save("../sample/A_$i.png",img)
+   end
 end
