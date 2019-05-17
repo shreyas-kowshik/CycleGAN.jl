@@ -48,7 +48,7 @@ function train_step(X_A,X_B)
 
     # LABELS #
     real_labels = ones(1,BATCH_SIZE)
-    fake_labels = ones(0,BATCH_SIZE)
+    fake_labels = zeros(1,BATCH_SIZE)
     
     ### Forward Propagation ###
     # zero_grad!(gen_A)
