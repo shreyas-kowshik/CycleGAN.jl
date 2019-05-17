@@ -1,5 +1,5 @@
 using Images,CuArrays,Flux
-using Flux:@treelike, Tracker
+using Flux:@treelike, Tracker, update!
 using Base.Iterators: partition
 using Random
 using Statistics

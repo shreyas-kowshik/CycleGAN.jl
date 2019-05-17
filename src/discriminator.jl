@@ -15,7 +15,8 @@ function Discriminator()
                   ConvBlock(512,512),
                   ConvBlock(512,512),
                   ConvBlock(512,512),
-                  Conv((4,4), 512=>1,pad = (1, 1), stride=(2,2)))
+                  Conv((4,4), 512=>1,pad = (1, 1), stride=(2,2)),
+                  x->σ.(x))
     return model 
     # model = Chain(model...,ConvBlock(8,16)...)
     # model = Chain(model...,ConvBlock(16,32)...)
