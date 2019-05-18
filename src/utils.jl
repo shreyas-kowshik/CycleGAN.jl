@@ -1,6 +1,6 @@
 function load_image(filename)
     img = load(filename)
-    img = Float32.(channelview(img))
+    img = Float64.(channelview(img))
 end
 
 function load_dataset(path,imsize)
