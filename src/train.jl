@@ -13,9 +13,9 @@ NUM_EPOCHS = 100
 BATCH_SIZE = 1
 dis_lr = 0.0001f0
 gen_lr = 0.0001f0
-λ₁ = 10.0 # Cycle loss weight for dommain A
-λ₂ = 10.0 # Cycle loss weight for domain B
-λid = 1.0 # Identity loss weight - Set this to '0' if identity loss is not required
+λ₁ = convert(Float32,10.0) # Cycle loss weight for dommain A
+λ₂ = convert(Float32,10.0) # Cycle loss weight for domain B
+λid = convert(Float32,1.0) # Identity loss weight - Set this to '0' if identity loss is not required
 NUM_EXAMPLES = 2 # Temporary for experimentation
 VERBOSE_FREQUENCY = 2 # Verbose output after every 2 epochs
 
@@ -39,6 +39,80 @@ dis_A = Discriminator() |> gpu # Discriminator For Domain A
 dis_B = Discriminator() |> gpu # Discriminator For Domain B
 println("Loaded Models")
 
+function dA_loss(a,b)
+    """
+    a : Image in domain A
+    b : Image in domain B
+    """
+    # LABELS #
+    real_labels = ones(1,BATCH_SIZE) |> gpu
+    fake_labels = zeros(1,BATCH_SIZE) |> gpu
+
+    fake_A = gen_B(b) # Fake image generated in domain A
+    fake_A_prob = drop_first_two(dis_B(fake_A.data)) # Probability that generated image in domain A is real
+    real_A_prob = drop_first_two(dis_B(a)) # Probability that original image in domain A is real
+
+    dis_A_real_loss = mean((real_A_prob .- real_labels).^2)
+    dis_A_fake_loss = mean((fake_A_prob .- fake_labels).^2)
+    0.5 * (dis_A_real_loss + dis_A_fake_loss)
+end
+
+function dB_loss(a,b)
+    """
+    a : Image in domain A
+    b : Image in domain B
+    """
+    # LABELS #
+    real_labels = ones(1,BATCH_SIZE) |> gpu
+    fake_labels = zeros(1,BATCH_SIZE) |> gpu
+
+    fake_B = gen_A(a) # Fake image generated in domain B
+    fake_B_prob = drop_first_two(dis_B(fake_B.data)) # Probability that generated image in domain B is real
+    real_B_prob = drop_first_two(dis_B(b)) # Probability that original image in domain B is real
+
+    dis_B_real_loss = mean((real_B_prob .- real_labels).^2)
+    dis_B_fake_loss = mean((fake_B_prob .- fake_labels).^2)
+    0.5 * (dis_B_real_loss + dis_B_fake_loss)
+end
+
+function g_loss(a,b)
+    """
+    a : Image in domain A
+    b : Image in domain B
+    """
+    # LABELS #
+    real_labels = ones(1,BATCH_SIZE) |> gpu
+    fake_labels = zeros(1,BATCH_SIZE) |> gpu
+
+    # Forward Propogation # 
+    fake_B = gen_A(a) # Fake image generated in domain B
+    fake_B_prob = drop_first_two(dis_B(fake_B)) # Probability that generated image in domain B is real
+    real_B_prob = drop_first_two(dis_B(b)) # Probability that original image in domain B is real
+
+    fake_A = gen_B(b) # Fake image generated in domain A
+    fake_A_prob = drop_first_two(dis_A(fake_A)) # Probability that generated image in domain A is real
+    real_A_prob = drop_first_two(dis_A(a)) # Probability that original image in domain A is real
+    
+    rec_A = gen_B(fake_B)
+    rec_B = gen_A(fake_A)
+    
+    ### Generator Losses ###
+    # For domain A->B  #
+    gen_B_loss = mean((fake_B_prob .- real_labels).^2)
+    rec_B_loss = mean(abs.(b .- rec_B)) # Reconstruction loss for domain B
+    
+    # For domain B->A  #
+    gen_A_loss = mean((fake_A_prob .- real_labels).^2)
+    rec_A_loss = mean(abs.(a .- rec_A)) # Reconstrucion loss for domain A
+
+    # Identity losses 
+    # gen_A should be identity if b is fed : ||gen_A(b) - b||
+    idt_A_loss = mean(abs.(gen_A(b) .- b))
+    # gen_B should be identity if a is fed : ||gen_B(a) - a||
+    idt_B_loss = mean(abs.(gen_B(a) .- a))
+
+    gen_A_loss + gen_B_loss + λ₁*rec_A_loss + λ₂*rec_B_loss  + λid*(λ₁*idt_A_loss + λ₂*idt_B_loss)
+end
 
 # Forward prop, backprop, optimise!
 function train_step(X_A,X_B) 
@@ -46,77 +120,23 @@ function train_step(X_A,X_B)
     X_A = norm(X_A)
     X_B = norm(X_B)
 
-    # LABELS #
-    real_labels = ones(1,BATCH_SIZE)
-    fake_labels = zeros(1,BATCH_SIZE)
-    
-    ### Forward Propagation ###
-    # zero_grad!(gen_A)
-    # zero_grad!(gen_B)
-    
-    println("1")
-    fake_B = gen_A(X_A) # Fake image generated in domain B
-    fake_B_prob = drop_first_two(dis_B(fake_B)) # Probability that generated image in domain B is real
-    real_B_prob = drop_first_two(dis_B(X_B)) # Probability that original image in domain B is real
-    println("2")
-    
-    fake_A = gen_B(X_B) # Fake image generated in domain A
-    fake_A_prob = drop_first_two(dis_A(fake_A)) # Probability that generated image in domain A is real
-    real_A_prob = drop_first_two(dis_A(X_A)) # Probability that original image in domain A is real
-    
-    println("3")
-    rec_A = gen_B(fake_B)
-    rec_B = gen_A(fake_A)
-    
-    ### Generator Losses ###
-    # For domain A->B  #
-    println("4")
-    gen_B_loss = mean((fake_B_prob .- real_labels).^2)
-    rec_B_loss = mean(abs.(X_B .- rec_B)) # Reconstruction loss for domain B
-    
-    # For domain B->A  #
-    println("5")
-    gen_A_loss = mean((fake_A_prob .- real_labels).^2)
-    rec_A_loss = mean(abs.(X_A .- rec_A)) # Reconstrucion loss for domain A
-
-    # Identity losses 
-    # gen_A should be identity if X_B is fed : ||gen_A(X_B) - X_B||
-    idt_A_loss = mean(abs.(gen_A(X_B) .- X_B))
-    # gen_B should be identity if X_A is fed : ||gen_B(X_A) - X_A||
-    idt_B_loss = mean(abs.(gen_B(X_A) .- X_A))
-
-    gen_loss = gen_A_loss + gen_B_loss + λ₁*rec_A_loss + λ₂*rec_B_loss  + λid*(λ₁*idt_A_loss + λ₂*idt_B_loss) # Total generator loss
-    
-    println("Forward propagate generators")
-    # Optimise
-    gs = Tracker.gradient(() -> gen_loss,params(params(gen_A)...,params(gen_B)...))
-    update!(opt_gen,params(params(gen_A)...,params(gen_B)...),gs)
-    println("Optimised generators")
-    
-    ### Discriminator Losses ###
-    # For domain A #
-    # zero_grad!(dis_A)
-    fake_A_prob = drop_first_two(dis_A(fake_A.data))
-    dis_A_real_loss = mean((real_A_prob .- real_labels).^2)
-    dis_A_fake_loss = mean((fake_A_prob .- fake_labels).^2)
-    dis_A_loss = 0.5 * (dis_A_real_loss + dis_A_fake_loss)
-    println("Forward propagate disA")
-    gs = Tracker.gradient(() -> dis_A_loss,params(dis_A))
+    # Optimise Discriminators
+    gs = Tracker.gradient(() -> dA_loss(X_A,X_B),params(dis_A))
     update!(opt_disc_A,params(dis_A),gs)
-    println("Optimised disA")
-    
-    # For domain B #
-    # zero_grad!(dis_B)
-    fake_B_prob = drop_first_two(dis_B(fake_B.data))
-    dis_B_real_loss = mean((real_B_prob .- real_labels).^2)
-    dis_B_fake_loss = mean((fake_B_prob .- fake_labels).^2)
-    dis_B_loss = 0.5 * (dis_B_real_loss + dis_B_fake_loss)
-    println("Forward propagate disB")
-    gs = Tracker.gradient(() -> dis_B_loss,params(dis_B))
+
+    gs = Tracker.gradient(() -> dB_loss(X_A,X_B),params(dis_B))
     update!(opt_disc_B,params(dis_B),gs)
-    println("Optimised disB")
-    
-    return gen_loss,dis_A_loss,dis_B_loss
+
+    # Optimise Generators
+    gs = Tracker.gradient(() -> g_loss(X_A,X_B),params(params(gen_A)...,params(gen_B)...))
+    update!(opt_gen,params(params(gen_A)...,params(gen_B)...),gs)
+
+    # Forward propagate to collect the losses
+    gloss = g_loss(X_A,X_B)
+    dAloss = dA_loss(X_A,X_B)
+    dBloss = dB_loss(X_A,X_B)
+
+    return gloss,dAloss,dBloss
 end
 
 function train()
@@ -156,8 +176,9 @@ function test()
    # load test data
    dataA = load_dataset("../data/trainA/",256)[:,:,:,1:2] |> gpu
    out = sampleA2B(dataA)
-   println(length(out))
    for (i,img) in enumerate(out)
         save("../sample/A_$i.png",img)
    end
 end
+
+train()
