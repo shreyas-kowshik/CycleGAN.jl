@@ -139,6 +139,17 @@ function train_step(X_A,X_B)
     return gloss,dAloss,dBloss
 end
 
+function save_weights(gen,dis)
+    gen_A = gen_A |> cpu
+    gen_B = gen_B |> cpu
+    dis_A = dis_A |> cpu
+    dis_B = dis_B |> cpu
+    @save "../weights/gen_A.bson" gen_A
+    @save "../weights/gen_B.bson" gen_B
+    @save "../weights/dis_A.bson" dis_A
+    @save "../weights/dis_B.bson" dis_B
+end
+
 function train()
     println("Training...")
     for epoch in 1:NUM_EPOCHS
@@ -152,6 +163,7 @@ function train()
             end
         end
     end
+    save_weights()
 end
 
 ### SAMPLING ###
