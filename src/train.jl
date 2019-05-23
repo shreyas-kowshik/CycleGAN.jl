@@ -1,8 +1,12 @@
 using Images,CuArrays,Flux
-using Flux:@treelike, Tracker, update!
+using Flux:@treelike, Tracker
 using Base.Iterators: partition
 using Random
 using Statistics
+using Flux.Tracker:update!
+using BSON: @save
+using Flux:testmode!
+using Distributions:Normal,Uniform
 
 include("utils.jl")
 include("generator.jl")
@@ -52,9 +56,9 @@ function dA_loss(a,b)
     fake_A_prob = drop_first_two(dis_B(fake_A.data)) # Probability that generated image in domain A is real
     real_A_prob = drop_first_two(dis_B(a)) # Probability that original image in domain A is real
 
-    dis_A_real_loss = mean((real_A_prob .- real_labels).^2)
-    dis_A_fake_loss = mean((fake_A_prob .- fake_labels).^2)
-    0.5 * (dis_A_real_loss + dis_A_fake_loss)
+    dis_A_real_loss = ((real_A_prob .- real_labels).^2)
+    dis_A_fake_loss = ((fake_A_prob .- fake_labels).^2)
+    convert(Float32,0.5) * mean(dis_A_real_loss + dis_A_fake_loss)
 end
 
 function dB_loss(a,b)
@@ -70,9 +74,9 @@ function dB_loss(a,b)
     fake_B_prob = drop_first_two(dis_B(fake_B.data)) # Probability that generated image in domain B is real
     real_B_prob = drop_first_two(dis_B(b)) # Probability that original image in domain B is real
 
-    dis_B_real_loss = mean((real_B_prob .- real_labels).^2)
-    dis_B_fake_loss = mean((fake_B_prob .- fake_labels).^2)
-    0.5 * (dis_B_real_loss + dis_B_fake_loss)
+    dis_B_real_loss = ((real_B_prob .- real_labels).^2)
+    dis_B_fake_loss = ((fake_B_prob .- fake_labels).^2)
+    convert(Float32,0.5) * mean(dis_B_real_loss + dis_B_fake_loss)
 end
 
 function g_loss(a,b)
